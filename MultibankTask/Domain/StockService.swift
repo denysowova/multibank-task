@@ -9,9 +9,12 @@ import Foundation
 @preconcurrency import Combine
 
 protocol StockService {
-    func startStreaming() -> AnyPublisher<[Stock], Error>
-    func stopStreaming()
+    var isUpdating: AnyPublisher<Bool, Never> { get }
+    
+    func stocks() -> AnyPublisher<[Stock], Error>
     func stock(for ticker: String) -> AnyPublisher<Stock, Error>
+    func resume()
+    func pause()
 }
 
 final class StockServiceImpl: StockService, @unchecked Sendable {
@@ -20,9 +23,15 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     private let streamer: StockStreamer
     
     private var stocksCache: [String: Stock]
-    private var stocks: CurrentValueSubject<[Stock], Error>?
+    private var stocksSubject: CurrentValueSubject<[Stock], Error>?
     private var timerCancellable: AnyCancellable?
     private var stocksCancellable: AnyCancellable?
+    
+    private var isUpdatingSubject = CurrentValueSubject<Bool, Never>(false)
+    
+    var isUpdating: AnyPublisher<Bool, Never> {
+        isUpdatingSubject.eraseToAnyPublisher()
+    }
     
     init(repository: StockRepository) {
         self.repository = repository
@@ -30,14 +39,16 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         stocksCache = Dictionary(uniqueKeysWithValues: repository.stocks().map { ($0.ticker, $0) })
     }
     
-    func startStreaming() -> AnyPublisher<[Stock], Error> {
-        if let stocks {
-            return stocks.eraseToAnyPublisher()
+    func stocks() -> AnyPublisher<[Stock], Error> {
+        if let stocksSubject {
+            return stocksSubject.eraseToAnyPublisher()
         }
+        
+        isUpdatingSubject.value = true
         
         let cachedStocks = stocksCache.values.sorted { $0.price > $1.price }
         let stocksSubject = CurrentValueSubject<[Stock], Error>(cachedStocks)
-        self.stocks = stocksSubject
+        self.stocksSubject = stocksSubject
         
         observeStocks()
         startTimer()
@@ -46,26 +57,32 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     }
     
     private func terminate(with completion: Subscribers.Completion<Error>) {
-        stocks?.send(completion: completion)
-        stocks = nil
+        stocksSubject?.send(completion: completion)
+        stocksSubject = nil
         
         timerCancellable?.cancel()
         timerCancellable = nil
         
         stocksCancellable?.cancel()
         stocksCancellable = nil
-    }
-    
-    func stopStreaming() {
-        terminate(with: .finished)
+        
+        isUpdatingSubject.value = false
     }
     
     func stock(for ticker: String) -> AnyPublisher<Stock, Error> {
-        startStreaming()
+        stocks()
             .compactMap { stocks in
                 stocks.first(where: { $0.ticker == ticker })
             }
             .eraseToAnyPublisher()
+    }
+    
+    func resume() {
+        isUpdatingSubject.value = true
+    }
+    
+    func pause() {
+        isUpdatingSubject.value = false
     }
     
     private func observeStocks() {
@@ -74,10 +91,8 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
                 receiveCompletion: { completion in
                     switch completion {
                     case .finished:
-//                        self.stocks?.send(completion: .finished)
                         self.terminate(with: .finished)
                     case .failure(let error):
-//                        self.stocks?.send(completion: .failure(error))
                         self.terminate(with: .failure(error))
                     }
                 },
@@ -101,7 +116,10 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
                 // 2. or use flatmap to observe new stocks after updates are sent, but sequential and therefore not good
                 // 3. combine 2 publishers in a way it fires every time one of them changes but we need to know which one has changed
                 
-                self.stocks?.value = self.stocksCache.values.sorted { $0.price > $1.price }
+                if self.isUpdatingSubject.value {
+                    self.stocksSubject?.value = self.stocksCache.values.sorted { $0.price > $1.price }
+                }
+                
                 self.sendStockUpdates()
             }
     }

@@ -20,8 +20,9 @@ struct WatchlistItem: Identifiable {
 final class WatchlistViewModel: ObservableObject {
     
     private let service: StockService
+    
     private var stocksCancellable: AnyCancellable?
-//    private var cancellables: Set<AnyCancellable> = []
+    private var pausedCancellable: AnyCancellable?
     
     private let priceFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -38,14 +39,15 @@ final class WatchlistViewModel: ObservableObject {
     init(service: StockService) {
         self.service = service
         
+        observeUpdatingStatus()
         observeStocks()
     }
     
     func toggleStreaming() {
-        isUpdating.toggle()
-        
-        if isUpdating, stocksCancellable == nil {
-            observeStocks()
+        if isUpdating {
+            service.pause()
+        } else {
+            service.resume()
         }
     }
     
@@ -55,7 +57,7 @@ final class WatchlistViewModel: ObservableObject {
         
         isConnected = true
         
-        stocksCancellable = service.startStreaming()
+        stocksCancellable = service.stocks()
             .map { stocks in
                 stocks.map {
                     let priceString = self.priceFormatter.string(from: $0.price as NSDecimalNumber) ?? "\($0.price)"
@@ -76,20 +78,17 @@ final class WatchlistViewModel: ObservableObject {
                         print("error: \(error.localizedDescription)")
                     }
                     self.isConnected = false
-                    self.isUpdating = false
+//                    self.isUpdating = false
                 },
                 receiveValue: { items in
-                    if self.isUpdating {
-                        self.items = items
-                    }
+                    self.items = items
                 }
             )
     }
     
-//    private func observeConnectionStatus() {
-//        service.isStreaming
-//            .receive(on: DispatchQueue.main)
-//            .assign(to: \.self.isConnected, on: self)
-//            .store(in: &cancellables)
-//    }
+    private func observeUpdatingStatus() {
+        pausedCancellable = service.isUpdating
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.self.isUpdating, on: self)
+    }
 }
