@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     
-    @StateObject private var viewModel = ViewModel()
+    @StateObject private var viewModel = ViewModel(service: StockServiceImpl(repository: StockRepositoryImpl(api: StockAPIImpl())))
     
     var body: some View {
         VStack {
@@ -18,12 +18,12 @@ struct ContentView: View {
                 .foregroundStyle(.tint)
             Text("Hello, world!")
             Button("Test") {
-                viewModel.test()
+//                viewModel.test()
             }
         }
         .padding()
         .task {
-            viewModel.setUp()
+//            viewModel.setUp()
         }
     }
 }

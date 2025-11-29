@@ -8,47 +8,52 @@
 import Foundation
 import Combine
 
-struct WebSocketMessage: Codable, Sendable {
-    let text: String
-}
+//struct WebSocketMessage: Codable, Sendable {
+//    let text: String
+//}
 
 @MainActor
 final class ViewModel: ObservableObject {
     
-    private let webSocket = WebSocketTask<WebSocketMessage, WebSocketMessage>(
-        url: URL(string: "wss://ws.postman-echo.com/raw")!
-    )
+    private let service: StockService
     
-    private var cancellable: AnyCancellable?
-    
-    func setUp() {
-        cancellable = webSocket.messages
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { completion in
-                    print("Completed: \(completion)")
-                },
-                receiveValue: { message in
-                    print("Received: \(message)")
-                }
-            )
-        
-        do {
-            try webSocket.start()
-        } catch {
-            print("error starting: \(error.localizedDescription)")
-        }
-        
+    init(service: StockService) {
+        self.service = service
     }
     
-    func test() {
-        Task {
-            let message = WebSocketMessage(text: "Hello, it's a test")
-            do {
-                try await webSocket.sendMessage(message)
-            } catch {
-                print("Error sending message: \(error.localizedDescription)")
-            }
-        }
-    }
+//    private let webSocket = WebSocketTask<WebSocketMessage, WebSocketMessage>(
+//        url: URL(string: "wss://ws.postman-echo.com/raw")!
+//    )
+    
+//    private var cancellable: AnyCancellable?
+    
+//    func setUp() {
+//        cancellable = webSocket.messages
+//            .receive(on: DispatchQueue.main)
+//            .sink(
+//                receiveCompletion: { completion in
+//                    print("Completed: \(completion)")
+//                },
+//                receiveValue: { message in
+//                    print("Received: \(message)")
+//                }
+//            )
+//        
+//        do {
+//            try webSocket.start()
+//        } catch {
+//            print("error starting: \(error.localizedDescription)")
+//        }
+//    }
+    
+//    func test() {
+//        Task {
+//            let message = WebSocketMessage(text: "Hello, it's a test")
+//            do {
+//                try await webSocket.sendMessage(message)
+//            } catch {
+//                print("Error sending message: \(error.localizedDescription)")
+//            }
+//        }
+//    }
 }
