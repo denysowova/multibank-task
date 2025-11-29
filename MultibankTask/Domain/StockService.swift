@@ -36,12 +36,14 @@ final class StockServiceImpl: StockService, Sendable {
     
     private func observeStocks() {
         streamer.stock
+            .collect(.byTime(DispatchQueue.main, .seconds(2))) // blocks main!!
             .sink(
                 receiveCompletion: { completion in
                     print("completed stock stream: \(completion)")
                 },
-                receiveValue: { stock in
-                    print("updated: \(stock.name): \(stock.price)")
+                receiveValue: { stocks in
+//                    print("updated: \(stock.name): \(stock.price)")
+                    self._stocks.value = stocks
                 }
             )
             .store(in: &cancellables)

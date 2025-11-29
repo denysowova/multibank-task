@@ -11,7 +11,7 @@ import SwiftUI
 struct MultibankTaskApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            WatchlistScreen()
         }
     }
 }
