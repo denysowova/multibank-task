@@ -58,5 +58,27 @@ struct WatchlistScreen: View {
             }
             .padding(.vertical, 8)
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(Text("Watchlist"))
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Text(viewModel.isConnected ? "🟢 Connected" : "🔴 Disconnected")
+                    .fixedSize()
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(
+                    action: {
+                        viewModel.toggleStreaming()
+                    },
+                    label: {
+                        Image(systemName: viewModel.isUpdating ? "stop.fill" : "play.fill")
+                    }
+                )
+            }
+        }
+//        .task {
+//            viewModel.startStreaming()
+//        }
     }
 }

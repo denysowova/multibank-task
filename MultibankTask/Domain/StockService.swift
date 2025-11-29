@@ -9,39 +9,59 @@ import Foundation
 @preconcurrency import Combine
 
 protocol StockService {
-    var stocks: AnyPublisher<[Stock], Error> { get }
-    
+    func startStreaming() -> AnyPublisher<[Stock], Error>
+    func stopStreaming()
     func stock(for ticker: String) -> AnyPublisher<Stock, Error>
 }
 
-final class StockServiceImpl: StockService, Sendable {
+final class StockServiceImpl: StockService, @unchecked Sendable {
     
     private let repository: StockRepository
     private let streamer: StockStreamer
     
-    private nonisolated(unsafe) var cancellables: Set<AnyCancellable> = []
-    private nonisolated(unsafe) var stocksCache: [String: Stock]
-    
-    private let _stocks: CurrentValueSubject<[Stock], Error>
-    
-    var stocks: AnyPublisher<[Stock], Error> {
-        _stocks.eraseToAnyPublisher()
-    }
+    private var stocksCache: [String: Stock]
+    private var stocks: CurrentValueSubject<[Stock], Error>?
+    private var timerCancellable: AnyCancellable?
+    private var stocksCancellable: AnyCancellable?
     
     init(repository: StockRepository) {
         self.repository = repository
         streamer = repository.streamer()
+        stocksCache = Dictionary(uniqueKeysWithValues: repository.stocks().map { ($0.ticker, $0) })
+    }
+    
+    func startStreaming() -> AnyPublisher<[Stock], Error> {
+        if let stocks {
+            return stocks.eraseToAnyPublisher()
+        }
         
-        let initialStocks = repository.stocks().sorted { $0.price > $1.price }
-        stocksCache = Dictionary(uniqueKeysWithValues: initialStocks.map { ($0.ticker, $0) })
-        _stocks = CurrentValueSubject(initialStocks)
+        let cachedStocks = stocksCache.values.sorted { $0.price > $1.price }
+        let stocksSubject = CurrentValueSubject<[Stock], Error>(cachedStocks)
+        self.stocks = stocksSubject
         
         observeStocks()
         startTimer()
+        
+        return stocksSubject.eraseToAnyPublisher()
+    }
+    
+    private func terminate(with completion: Subscribers.Completion<Error>) {
+        stocks?.send(completion: completion)
+        stocks = nil
+        
+        timerCancellable?.cancel()
+        timerCancellable = nil
+        
+        stocksCancellable?.cancel()
+        stocksCancellable = nil
+    }
+    
+    func stopStreaming() {
+        terminate(with: .finished)
     }
     
     func stock(for ticker: String) -> AnyPublisher<Stock, Error> {
-        _stocks
+        startStreaming()
             .compactMap { stocks in
                 stocks.first(where: { $0.ticker == ticker })
             }
@@ -49,44 +69,48 @@ final class StockServiceImpl: StockService, Sendable {
     }
     
     private func observeStocks() {
-        streamer.stock
+        stocksCancellable = streamer.stock
             .sink(
                 receiveCompletion: { completion in
-                    print("completed stock stream: \(completion)")
+                    switch completion {
+                    case .finished:
+//                        self.stocks?.send(completion: .finished)
+                        self.terminate(with: .finished)
+                    case .failure(let error):
+//                        self.stocks?.send(completion: .failure(error))
+                        self.terminate(with: .failure(error))
+                    }
                 },
                 receiveValue: { stock in
-//                    print("updated: \(stock.name): \(stock.price)")
                     self.stocksCache[stock.ticker] = stock
                 }
             )
-            .store(in: &cancellables)
         
         do {
             try streamer.start()
         } catch {
-            print("Error starting streamer: \(error.localizedDescription)")
+            terminate(with: .failure(error))
         }
     }
     
     private func startTimer() {
-        Timer.publish(every: 2, on: .main, in: .common)
+        timerCancellable = Timer.publish(every: 2, on: .main, in: .common)
             .autoconnect()
             .sink { _ in
                 // 1. cache and publish stocks here! use a set instead!
                 // 2. or use flatmap to observe new stocks after updates are sent, but sequential and therefore not good
                 // 3. combine 2 publishers in a way it fires every time one of them changes but we need to know which one has changed
                 
-                self._stocks.value = self.stocksCache.values.sorted { $0.price > $1.price }
+                self.stocks?.value = self.stocksCache.values.sorted { $0.price > $1.price }
                 self.sendStockUpdates()
             }
-            .store(in: &cancellables)
     }
     
     private func sendStockUpdates() {
         // Pick 10 random stocks to be "active movers" this cycle
         let activeMovers = Set(Array(stocksCache.keys).shuffled().prefix(10))
 
-        _stocks.value.forEach { stock in
+        stocksCache.values.forEach { stock in
             // Active movers get +/-40% volatility, others get +/-5%
             let volatility = activeMovers.contains(stock.ticker) ? 0.40 : 0.03
             let priceChangePercent = Double.random(in: -volatility...volatility)
@@ -113,7 +137,7 @@ final class StockServiceImpl: StockService, Sendable {
 
             Task {
                 do {
-                    print("Updating stock: \(update.name) with new price: \(update.price)")
+//                    print("Updating stock: \(update.name) with new price: \(update.price)")
                     try await self.streamer.update(update)
                 } catch {
                     print("error sending update: \(error.localizedDescription)")

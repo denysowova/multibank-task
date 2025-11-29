@@ -21,6 +21,7 @@ final class WatchlistViewModel: ObservableObject {
     
     private let service: StockService
     private var stocksCancellable: AnyCancellable?
+//    private var cancellables: Set<AnyCancellable> = []
     
     private let priceFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -31,6 +32,8 @@ final class WatchlistViewModel: ObservableObject {
     }()
     
     @Published private(set) var items: [WatchlistItem] = []
+    @Published private(set) var isConnected = false
+    @Published private(set) var isUpdating = true
     
     init(service: StockService) {
         self.service = service
@@ -38,8 +41,21 @@ final class WatchlistViewModel: ObservableObject {
         observeStocks()
     }
     
+    func toggleStreaming() {
+        isUpdating.toggle()
+        
+        if isUpdating, stocksCancellable == nil {
+            observeStocks()
+        }
+    }
+    
     private func observeStocks() {
-        stocksCancellable = service.stocks
+        stocksCancellable?.cancel()
+        stocksCancellable = nil
+        
+        isConnected = true
+        
+        stocksCancellable = service.startStreaming()
             .map { stocks in
                 stocks.map {
                     let priceString = self.priceFormatter.string(from: $0.price as NSDecimalNumber) ?? "\($0.price)"
@@ -56,11 +72,24 @@ final class WatchlistViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { completion in
-                    print("xxx stopped watchlist: \(completion)")
+                    if case let .failure(error) = completion {
+                        print("error: \(error.localizedDescription)")
+                    }
+                    self.isConnected = false
+                    self.isUpdating = false
                 },
                 receiveValue: { items in
-                    self.items = items
+                    if self.isUpdating {
+                        self.items = items
+                    }
                 }
             )
     }
+    
+//    private func observeConnectionStatus() {
+//        service.isStreaming
+//            .receive(on: DispatchQueue.main)
+//            .assign(to: \.self.isConnected, on: self)
+//            .store(in: &cancellables)
+//    }
 }
