@@ -78,7 +78,6 @@ final class WatchlistViewModel: ObservableObject {
                         print("error: \(error.localizedDescription)")
                     }
                     self.isConnected = false
-//                    self.isUpdating = false
                 },
                 receiveValue: { items in
                     self.items = items
