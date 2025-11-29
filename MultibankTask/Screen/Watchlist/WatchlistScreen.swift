@@ -9,7 +9,7 @@ import SwiftUI
 
 struct WatchlistScreen: View {
     
-    @StateObject private var viewModel = WatchlistViewModel(service: StockServiceImpl(repository: StockRepositoryImpl(api: StockAPIImpl())))
+    @StateObject private var viewModel = ViewModelFactory.feedViewModel()
     @EnvironmentObject private var router: Router
     
     var body: some View {

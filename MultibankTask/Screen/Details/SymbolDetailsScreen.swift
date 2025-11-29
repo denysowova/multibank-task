@@ -12,7 +12,7 @@ struct SymbolDetailsScreen: View {
     @StateObject private var viewModel: SymbolDetailsViewModel
     
     init(ticker: String) {
-        _viewModel = StateObject(wrappedValue: SymbolDetailsViewModel(ticker: ticker))
+        _viewModel = StateObject(wrappedValue: ViewModelFactory.symbolDetailsViewModel(withTicker: ticker))
     }
     
     var body: some View {
