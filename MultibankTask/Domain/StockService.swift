@@ -73,25 +73,34 @@ final class StockServiceImpl: StockService, Sendable {
     }
     
     private func sendStockUpdates() {
-        _stocks.value.forEach {
-            let priceUpdate = Double.random(in: -0.05...0.05)
+        // Pick 10 random stocks to be "active movers" this cycle
+        let activeMovers = Set(Array(stocksCache.keys).shuffled().prefix(10))
+
+        _stocks.value.forEach { stock in
+            // Active movers get +/-40% volatility, others get +/-5%
+            let volatility = activeMovers.contains(stock.ticker) ? 0.40 : 0.03
+            let priceChangePercent = Double.random(in: -volatility...volatility)
+
+            let priceChangeAmount = stock.price * Decimal(priceChangePercent)
+            let newPrice = stock.price + priceChangeAmount
+
             let priceChange: PriceChange
             
-            if priceUpdate > 0 {
+            if priceChangePercent > 0 {
                 priceChange = .increased
-            } else if priceUpdate < 0 {
+            } else if priceChangePercent < 0 {
                 priceChange = .decreased
             } else {
                 priceChange = .unchanged
             }
-            
+
             let update = Stock(
-                ticker: $0.ticker,
-                name: $0.name,
-                price: $0.price + Decimal(priceUpdate),
+                ticker: stock.ticker,
+                name: stock.name,
+                price: newPrice,
                 priceChange: priceChange
             )
-            
+
             Task {
                 do {
                     print("Updating stock: \(update.name) with new price: \(update.price)")

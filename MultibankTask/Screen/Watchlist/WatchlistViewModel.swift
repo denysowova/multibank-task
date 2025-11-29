@@ -39,8 +39,6 @@ final class WatchlistViewModel: ObservableObject {
     }
     
     private func observeStocks() {
-        
-
         stocksCancellable = service.stocks
             .map { stocks in
                 stocks.map {
