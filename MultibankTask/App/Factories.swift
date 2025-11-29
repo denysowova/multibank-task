@@ -26,6 +26,6 @@ enum ViewModelFactory {
     }
     
     static func symbolDetailsViewModel(withTicker ticker: String) -> SymbolDetailsViewModel {
-        SymbolDetailsViewModel(ticker: ticker)
+        SymbolDetailsViewModel(stockService: DomainFactory.stockService, ticker: ticker)
     }
 }

@@ -10,6 +10,8 @@ import Foundation
 
 protocol StockService {
     var stocks: AnyPublisher<[Stock], Error> { get }
+    
+    func stock(for ticker: String) -> AnyPublisher<Stock, Error>
 }
 
 final class StockServiceImpl: StockService, Sendable {
@@ -36,6 +38,14 @@ final class StockServiceImpl: StockService, Sendable {
         
         observeStocks()
         startTimer()
+    }
+    
+    func stock(for ticker: String) -> AnyPublisher<Stock, Error> {
+        _stocks
+            .compactMap { stocks in
+                stocks.first(where: { $0.ticker == ticker })
+            }
+            .eraseToAnyPublisher()
     }
     
     private func observeStocks() {
