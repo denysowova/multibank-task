@@ -59,7 +59,7 @@ final class StockServiceImpl: StockService, Sendable {
     }
     
     private func startTimer() {
-        Timer.publish(every: 2, on: .main, in: .default)
+        Timer.publish(every: 2, on: .main, in: .common)
             .autoconnect()
             .sink { _ in
                 // 1. cache and publish stocks here! use a set instead!
@@ -75,7 +75,22 @@ final class StockServiceImpl: StockService, Sendable {
     private func sendStockUpdates() {
         _stocks.value.forEach {
             let priceUpdate = Double.random(in: -0.05...0.05)
-            let update = Stock(ticker: $0.ticker, name: $0.name, price: $0.price + Decimal(priceUpdate))
+            let priceChange: PriceChange
+            
+            if priceUpdate > 0 {
+                priceChange = .increased
+            } else if priceUpdate < 0 {
+                priceChange = .decreased
+            } else {
+                priceChange = .unchanged
+            }
+            
+            let update = Stock(
+                ticker: $0.ticker,
+                name: $0.name,
+                price: $0.price + Decimal(priceUpdate),
+                priceChange: priceChange
+            )
             
             Task {
                 do {

@@ -7,8 +7,15 @@
 
 import Foundation
 
+enum PriceChange: Codable {
+    case increased
+    case decreased
+    case unchanged
+}
+
 struct Stock {
     let ticker: String
     let name: String
     let price: Decimal
+    let priceChange: PriceChange
 }

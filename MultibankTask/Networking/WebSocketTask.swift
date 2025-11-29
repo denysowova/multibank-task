@@ -28,12 +28,6 @@ final class WebSocketTask<InMessage: Decodable & Sendable, OutMessage: Encodable
     init(url: URL) {
         let session = URLSession(configuration: .default)
         let request = URLRequest(url: url)
-//        request.httpMethod = "GET"
-//        request.setValue("z0WnkWwdJ4TAwakOKLWLXg==", forHTTPHeaderField: "Sec-WebSocket-Key")
-//        request.setValue("13", forHTTPHeaderField: "Sec-WebSocket-Version")
-//        request.setValue("Upgrade", forHTTPHeaderField: "Connection")
-//        request.setValue("websocket", forHTTPHeaderField: "Upgrade")
-        
         socket = session.webSocketTask(with: request)
 
         super.init()

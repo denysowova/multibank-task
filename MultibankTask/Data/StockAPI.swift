@@ -7,10 +7,17 @@
 
 import Foundation
 
+enum PriceChangeDTO: String, Codable {
+    case increased
+    case decreased
+    case unchanged
+}
+
 struct StockDTO: Codable {
     let ticker: String
     let name: String
     let price: Decimal
+    let priceChange: PriceChangeDTO
 }
 
 protocol StockAPI: Sendable {
