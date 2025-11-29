@@ -25,34 +25,13 @@ struct WatchlistRow: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(item.price)
                     .font(.headline)
                     .foregroundColor(priceColor)
                     .animation(.easeInOut(duration: 0.3), value: priceColor)
 
-                HStack(spacing: 4) {
-                    switch item.priceChange {
-                    case .increased:
-                        Image(systemName: "arrow.up")
-                            .foregroundColor(.green)
-                        Text("Up")
-                            .font(.caption)
-                            .foregroundColor(.green)
-                    case .decreased:
-                        Image(systemName: "arrow.down")
-                            .foregroundColor(.red)
-                        Text("Down")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    case .unchanged:
-                        Image(systemName: "minus")
-                            .foregroundColor(.gray)
-                        Text("Unchanged")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                }
+                PriceChangeIndicator(priceChange: item.priceChange, font: .caption)
             }
         }
         .padding(.vertical, 8)

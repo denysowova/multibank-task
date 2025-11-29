@@ -37,31 +37,10 @@ struct SymbolDetailsScreen: View {
                 Text(viewModel.price)
                     .font(.system(size: 48, weight: .bold, design: .rounded))
 
-                HStack(spacing: 6) {
-                    switch viewModel.priceChange {
-                    case .increased:
-                        Image(systemName: "arrow.up")
-                            .font(.title2)
-                            .foregroundColor(.green)
-                        Text("Increasing")
-                            .font(.headline)
-                            .foregroundColor(.green)
-                    case .decreased:
-                        Image(systemName: "arrow.down")
-                            .font(.title2)
-                            .foregroundColor(.red)
-                        Text("Decreasing")
-                            .font(.headline)
-                            .foregroundColor(.red)
-                    case .unchanged:
-                        Image(systemName: "minus")
-                            .font(.title2)
-                            .foregroundColor(.gray)
-                        Text("Unchanged")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                    }
-                }
+                PriceChangeIndicator(
+                    priceChange: viewModel.priceChange,
+                    font: .system(size: 48)
+                )
             }
         }
     }
