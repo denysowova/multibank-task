@@ -9,9 +9,18 @@ import SwiftUI
 
 @main
 struct MultibankTaskApp: App {
+    
+    @StateObject private var router = Router()
+    
     var body: some Scene {
         WindowGroup {
-            WatchlistScreen()
+            NavigationStack(path: $router.path) {
+                router.root.destination()
+                    .navigationDestination(for: Route.self) { route in
+                        route.destination()
+                    }
+            }
+            .environmentObject(router)
         }
     }
 }

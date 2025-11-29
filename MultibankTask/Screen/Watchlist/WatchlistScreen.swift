@@ -10,6 +10,7 @@ import SwiftUI
 struct WatchlistScreen: View {
     
     @StateObject private var viewModel = WatchlistViewModel(service: StockServiceImpl(repository: StockRepositoryImpl(api: StockAPIImpl())))
+    @EnvironmentObject private var router: Router
     
     var body: some View {
         List(viewModel.items) { item in
@@ -51,6 +52,9 @@ struct WatchlistScreen: View {
                         }
                     }
                 }
+            }
+            .onTapGesture {
+                router.push(.symbolDetails(ticker: item.ticker))
             }
             .padding(.vertical, 8)
         }
