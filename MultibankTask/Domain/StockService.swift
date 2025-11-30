@@ -66,7 +66,9 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         stocksCancellable?.cancel()
         stocksCancellable = nil
         
-        streamer?.terminate()
+        Task {
+            await streamer?.terminate()
+        }
         
         isUpdatingSubject.value = false
     }
@@ -123,10 +125,12 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
                 }
             )
         
-        do {
-            try streamer?.start()
-        } catch {
-            terminate(with: .failure(StockError.networking(error)))
+        Task {
+            do {
+                try await streamer?.start()
+            } catch {
+                terminate(with: .failure(StockError.networking(error)))
+            }
         }
     }
     
