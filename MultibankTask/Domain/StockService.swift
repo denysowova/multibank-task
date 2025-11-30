@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Synchronization
 @preconcurrency import Combine
 
 protocol StockService {
@@ -17,19 +18,31 @@ protocol StockService {
     func pause()
 }
 
-/// NOTE: @unchecked Sendable is solvable by wrapping state in a mutex. See the safe-service branch
-final class StockServiceImpl: StockService, @unchecked Sendable {
+final class StockServiceImpl: StockService, Sendable {
+    
+    private class StockState {
+        var streamer: StockStreamer?
+        var cache: [String: Stock]
+        var stocks: CurrentValueSubject<[Stock], StockError>?
+        
+        init(
+            streamer: StockStreamer? = nil,
+            cache: [String: Stock] = [:],
+            stocks: CurrentValueSubject<[Stock], StockError>? = nil
+        ) {
+            self.streamer = streamer
+            self.cache = cache
+            self.stocks = stocks
+        }
+    }
     
     private let repository: StockRepository
+    private let stockState = Mutex(StockState())
     
-    private var streamer: StockStreamer?
-    private var stocksCache: [String: Stock]
-    private var stocksSubject: CurrentValueSubject<[Stock], StockError>?
+    private nonisolated(unsafe) var timerCancellable: AnyCancellable?
+    private nonisolated(unsafe) var stocksCancellable: AnyCancellable?
     
-    private var timerCancellable: AnyCancellable?
-    private var stocksCancellable: AnyCancellable?
-    
-    private var isUpdatingSubject = CurrentValueSubject<Bool, Never>(false)
+    private let isUpdatingSubject = CurrentValueSubject<Bool, Never>(false)
     
     var isUpdating: AnyPublisher<Bool, Never> {
         isUpdatingSubject.eraseToAnyPublisher()
@@ -37,38 +50,46 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     
     init(repository: StockRepository) {
         self.repository = repository
-        stocksCache = Dictionary(uniqueKeysWithValues: repository.stocks().map { ($0.ticker, $0) })
+        
+        stockState.withLock {
+            $0.cache = Dictionary(uniqueKeysWithValues: repository.stocks().map { ($0.ticker, $0) })
+        }
     }
     
     func stocks() -> AnyPublisher<[Stock], StockError> {
-        if let stocksSubject {
+        if let stocksSubject = stockState.withLock({ $0.stocks }) {
             return stocksSubject.eraseToAnyPublisher()
         }
-        
+
         isUpdatingSubject.value = true
-        
-        let cachedStocks = stocksCache.values.sorted { $0.price > $1.price }
-        let stocksSubject = CurrentValueSubject<[Stock], StockError>(cachedStocks)
-        self.stocksSubject = stocksSubject
-        
+
+        let stocksSubject = stockState.withLock {
+            let cachedStocks = $0.cache.values.sorted { $0.price > $1.price }
+            let stocksSubject = CurrentValueSubject<[Stock], StockError>(cachedStocks)
+            $0.stocks = stocksSubject
+            return stocksSubject
+        }
+
         observeStocks()
         startTimer()
-        
+
         return stocksSubject.eraseToAnyPublisher()
     }
     
     private func terminate(with completion: Subscribers.Completion<StockError>) {
-        stocksSubject?.send(completion: completion)
-        stocksSubject = nil
-        
+        stockState.withLock {
+            $0.stocks?.send(completion: completion)
+            $0.stocks = nil
+        }
+
         timerCancellable?.cancel()
         timerCancellable = nil
-        
+
         stocksCancellable?.cancel()
         stocksCancellable = nil
-        
+
         Task {
-            await streamer?.terminate()
+            await stockState.withLock { $0.streamer }?.terminate()
         }
         
         isUpdatingSubject.value = false
@@ -87,8 +108,10 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     }
     
     func resume() {
-        if stocksSubject != nil {
-            isUpdatingSubject.value = true
+        stockState.withLock {
+            if $0.stocks != nil {
+                isUpdatingSubject.value = true
+            }
         }
     }
     
@@ -97,9 +120,10 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     }
     
     private func observeStocks() {
-        streamer = repository.streamer()
-        
-        stocksCancellable = streamer?.stock
+        let streamer = repository.streamer()
+        stockState.withLock { $0.streamer = streamer }
+
+        stocksCancellable = streamer.stock
             .sink(
                 receiveCompletion: { [weak self] completion in
                     switch completion {
@@ -115,20 +139,22 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
                     }
 
                     let description = self.repository.description(for: stock.ticker)
-                    
-                    self.stocksCache[stock.ticker] = Stock(
-                        ticker: stock.ticker,
-                        name: stock.name,
-                        price: stock.price,
-                        priceChange: stock.priceChange,
-                        description: description
-                    )
+
+                    self.stockState.withLock {
+                        $0.cache[stock.ticker] = Stock(
+                            ticker: stock.ticker,
+                            name: stock.name,
+                            price: stock.price,
+                            priceChange: stock.priceChange,
+                            description: description
+                        )
+                    }
                 }
             )
-        
+
         Task {
             do {
-                try await streamer?.start()
+                try await streamer.start()
             } catch {
                 terminate(with: .failure(StockError.networking(error)))
             }
@@ -143,20 +169,25 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
                 guard let self else {
                     return
                 }
-                
+
                 if self.isUpdatingSubject.value {
-                    self.stocksSubject?.value = self.stocksCache.values.sorted { $0.price > $1.price }
+                    self.stockState.withLock {
+                        $0.stocks?.value = $0.cache.values.sorted { $0.price > $1.price }
+                    }
                 }
-                
+
                 self.sendStockUpdates()
             }
     }
     
     private func sendStockUpdates() {
-        // Pick 10 random stocks to be "active movers" this cycle
-        let activeMovers = Set(Array(stocksCache.keys).shuffled().prefix(10))
+        let (activeMovers, stocks, streamer) = stockState.withLock { state in
+            // Pick 10 random stocks to be "active movers" this cycle
+            let activeMovers = Set(Array(state.cache.keys).shuffled().prefix(10))
+            return (activeMovers, Array(state.cache.values), state.streamer)
+        }
 
-        stocksCache.values.forEach { stock in
+        stocks.forEach { stock in
             // Active movers get +/-40% volatility, others get +/-5%
             let volatility = activeMovers.contains(stock.ticker) ? 0.40 : 0.03
             let priceChangePercent = Double.random(in: -volatility...volatility)
@@ -165,7 +196,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
             let newPrice = stock.price + priceChangeAmount
 
             let priceChange: PriceChange
-            
+
             if priceChangePercent > 0 {
                 priceChange = .increased
             } else if priceChangePercent < 0 {
@@ -184,7 +215,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
 
             Task {
                 do {
-                    try await self.streamer?.update(update)
+                    try await streamer?.update(update)
                 } catch {
                     print("Error sending update: \(error.localizedDescription)")
                 }
