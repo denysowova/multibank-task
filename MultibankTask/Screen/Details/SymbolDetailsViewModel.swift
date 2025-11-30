@@ -42,23 +42,17 @@ final class SymbolDetailsViewModel: ObservableObject {
     private func observeStock() {
         stockCancellable = stockService.stock(for: ticker)
             .sink(
-                receiveCompletion: { completion in
+                receiveCompletion: { [weak self] completion in
                     if case let .failure(error) = completion {
-                        self.error = error
+                        self?.error = error
                     }
-                    print("Completed stock details stream: \(completion)")
                 },
                 receiveValue: { [weak self] stock in
-                    guard let self else {
-                        return
-                    }
-
-                    let priceString = self.priceFormatter.string(from: stock.price as NSDecimalNumber) ?? "\(stock.price)"
-
-                    self.companyName = stock.name
-                    self.price = "$\(priceString)"
-                    self.priceChange = stock.priceChange
-                    self.description = "Stock details"
+                    let priceString = self?.priceFormatter.string(from: stock.price as NSDecimalNumber) ?? "\(stock.price)"
+                    self?.companyName = stock.name
+                    self?.price = "$\(priceString)"
+                    self?.priceChange = stock.priceChange
+                    self?.description = "Stock details"
                 }
             )
     }

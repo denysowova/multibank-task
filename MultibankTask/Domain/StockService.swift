@@ -98,16 +98,16 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         
         stocksCancellable = streamer?.stock
             .sink(
-                receiveCompletion: { completion in
+                receiveCompletion: { [weak self] completion in
                     switch completion {
                     case .finished:
-                        self.terminate(with: .finished)
+                        self?.terminate(with: .finished)
                     case .failure(let error):
-                        self.terminate(with: .failure(error))
+                        self?.terminate(with: .failure(error))
                     }
                 },
-                receiveValue: { stock in
-                    self.stocksCache[stock.ticker] = stock
+                receiveValue: { [weak self] stock in
+                    self?.stocksCache[stock.ticker] = stock
                 }
             )
         
@@ -122,10 +122,10 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         timerCancellable = Timer.publish(every: 2, on: .main, in: .common)
             .autoconnect()
             .prepend(.now)
-            .sink { _ in
-                // 1. cache and publish stocks here! use a set instead!
-                // 2. or use flatmap to observe new stocks after updates are sent, but sequential and therefore not good
-                // 3. combine 2 publishers in a way it fires every time one of them changes but we need to know which one has changed
+            .sink { [weak self] _ in
+                guard let self else {
+                    return
+                }
                 
                 if self.isUpdatingSubject.value {
                     self.stocksSubject?.value = self.stocksCache.values.sorted { $0.price > $1.price }
@@ -166,10 +166,9 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
 
             Task {
                 do {
-//                    print("Updating stock: \(update.name) with new price: \(update.price)")
                     try await self.streamer?.update(update)
                 } catch {
-                    print("error sending update: \(error.localizedDescription)")
+                    print("Error sending update: \(error.localizedDescription)")
                 }
             }
         }

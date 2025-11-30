@@ -81,14 +81,14 @@ final class WatchlistViewModel: ObservableObject {
             }
             .receive(on: DispatchQueue.main)
             .sink(
-                receiveCompletion: { completion in
+                receiveCompletion: { [weak self] completion in
                     if case let .failure(error) = completion {
-                        self.error = error
+                        self?.error = error
                     }
-                    self.isConnected = false
+                    self?.isConnected = false
                 },
-                receiveValue: { items in
-                    self.items = items
+                receiveValue: { [weak self] items in
+                    self?.items = items
                 }
             )
     }
@@ -96,6 +96,8 @@ final class WatchlistViewModel: ObservableObject {
     private func observeUpdatingStatus() {
         pausedCancellable = service.isUpdating
             .receive(on: DispatchQueue.main)
-            .assign(to: \.self.isUpdating, on: self)
+            .sink { [weak self] isUpdating in
+                self?.isUpdating = isUpdating
+            }
     }
 }
