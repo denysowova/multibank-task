@@ -17,16 +17,16 @@ struct SymbolDetailsScreen: View {
     
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(viewModel.companyName)
+            Text(viewModel.state?.companyName ?? "")
                 .font(.title2)
                 .fontWeight(.semibold)
 
-            Text(viewModel.ticker)
+            Text(viewModel.state?.ticker ?? "")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
     }
-    
+
     private var priceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Current Price")
@@ -34,23 +34,25 @@ struct SymbolDetailsScreen: View {
                 .foregroundColor(.secondary)
 
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(viewModel.price)
+                Text(viewModel.state?.price ?? "")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
 
-                PriceChangeIndicator(
-                    priceChange: viewModel.priceChange,
-                    font: .system(size: 48)
-                )
+                if let priceChange = viewModel.state?.priceChange {
+                    PriceChangeIndicator(
+                        priceChange: priceChange,
+                        font: .system(size: 48)
+                    )
+                }
             }
         }
     }
-    
+
     private var description: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("About")
                 .font(.headline)
 
-            Text(viewModel.description)
+            Text(viewModel.state?.description ?? "")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .lineSpacing(4)
@@ -70,7 +72,7 @@ struct SymbolDetailsScreen: View {
             Spacer()
         }
         .padding(24)
-        .navigationTitle(viewModel.ticker)
+        .navigationTitle(viewModel.state?.ticker ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Error", isPresented: .constant(viewModel.error != nil), presenting: viewModel.error) { _ in
             Button("OK") {

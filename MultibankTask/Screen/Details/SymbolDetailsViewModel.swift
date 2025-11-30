@@ -8,10 +8,19 @@
 import Foundation
 import Combine
 
+struct StockDetailItem {
+    let ticker: String
+    let companyName: String
+    let description: String
+    let price: String
+    let priceChange: PriceChange
+}
+
 @MainActor
 final class SymbolDetailsViewModel: ObservableObject {
 
     private let stockService: StockService
+    private let ticker: String
 
     private var stockCancellable: AnyCancellable?
 
@@ -23,11 +32,7 @@ final class SymbolDetailsViewModel: ObservableObject {
         return formatter
     }()
 
-    @Published private(set) var ticker: String
-    @Published private(set) var companyName = ""
-    @Published private(set) var price = ""
-    @Published private(set) var priceChange: PriceChange = .unchanged
-    @Published private(set) var description = ""
+    @Published private(set) var state: StockDetailItem?
     @Published var error: Error?
 
     init(stockService: StockService, ticker: String) {
@@ -52,10 +57,13 @@ final class SymbolDetailsViewModel: ObservableObject {
 
                     let priceString = self.priceFormatter.string(from: stock.price as NSDecimalNumber) ?? "\(stock.price)"
 
-                    self.companyName = stock.name
-                    self.price = "$\(priceString)"
-                    self.priceChange = stock.priceChange
-                    self.description = stock.description ?? "No description available"
+                    self.state = StockDetailItem(
+                        ticker: stock.ticker,
+                        companyName: stock.name,
+                        description: stock.description ?? "No description available",
+                        price: "$\(priceString)",
+                        priceChange: stock.priceChange
+                    )
                 }
             )
     }
