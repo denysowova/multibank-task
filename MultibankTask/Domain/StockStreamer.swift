@@ -37,7 +37,7 @@ final class StockStreamer: Sendable {
         try await task.start()
     }
     
-    func terminate() async throws {
+    func terminate() async {
         await task.terminate()
     }
     

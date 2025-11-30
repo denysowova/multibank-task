@@ -68,7 +68,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         stocksCancellable = nil
         
         Task {
-            try await streamer?.terminate()
+            await streamer?.terminate()
         }
         
         isUpdatingSubject.value = false
