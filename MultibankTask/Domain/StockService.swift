@@ -17,6 +17,7 @@ protocol StockService {
     func pause()
 }
 
+/// NOTE: @unchecked Sendable is solvable by wrapping state in a mutex. See the websocket-actor branch
 final class StockServiceImpl: StockService, @unchecked Sendable {
     
     private let repository: StockRepository

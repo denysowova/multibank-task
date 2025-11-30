@@ -8,6 +8,8 @@
 import Foundation
 import Combine
 
+/// NOTE: @unchecked Sendable is solvable making the type an actor. That will create some difficulties with Combine usage.
+/// See the websocket-actor branch
 final class WebSocketTask<InMessage: Decodable & Sendable, OutMessage: Encodable & Sendable>:
     NSObject, URLSessionTaskDelegate, @unchecked Sendable {
 
