@@ -18,4 +18,5 @@ struct Stock {
     let name: String
     let price: Decimal
     let priceChange: PriceChange
+    let description: String?
 }

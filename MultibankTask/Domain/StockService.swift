@@ -107,7 +107,19 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
                     }
                 },
                 receiveValue: { [weak self] stock in
-                    self?.stocksCache[stock.ticker] = stock
+                    guard let self else {
+                        return
+                    }
+
+                    let description = self.repository.description(for: stock.ticker)
+                    
+                    self.stocksCache[stock.ticker] = Stock(
+                        ticker: stock.ticker,
+                        name: stock.name,
+                        price: stock.price,
+                        priceChange: stock.priceChange,
+                        description: description
+                    )
                 }
             )
         
@@ -161,7 +173,8 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
                 ticker: stock.ticker,
                 name: stock.name,
                 price: newPrice,
-                priceChange: priceChange
+                priceChange: priceChange,
+                description: nil
             )
 
             Task {

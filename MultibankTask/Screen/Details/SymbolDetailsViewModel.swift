@@ -48,11 +48,14 @@ final class SymbolDetailsViewModel: ObservableObject {
                     }
                 },
                 receiveValue: { [weak self] stock in
-                    let priceString = self?.priceFormatter.string(from: stock.price as NSDecimalNumber) ?? "\(stock.price)"
-                    self?.companyName = stock.name
-                    self?.price = "$\(priceString)"
-                    self?.priceChange = stock.priceChange
-                    self?.description = "Stock details"
+                    guard let self else { return }
+
+                    let priceString = self.priceFormatter.string(from: stock.price as NSDecimalNumber) ?? "\(stock.price)"
+
+                    self.companyName = stock.name
+                    self.price = "$\(priceString)"
+                    self.priceChange = stock.priceChange
+                    self.description = stock.description ?? "No description available"
                 }
             )
     }

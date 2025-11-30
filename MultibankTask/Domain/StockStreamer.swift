@@ -19,7 +19,8 @@ final class StockStreamer: Sendable {
                     ticker: $0.ticker,
                     name: $0.name,
                     price: $0.price,
-                    priceChange: PriceChange(from: $0.priceChange)
+                    priceChange: PriceChange(from: $0.priceChange),
+                    description: nil
                 )
             }
             .mapError { error in
