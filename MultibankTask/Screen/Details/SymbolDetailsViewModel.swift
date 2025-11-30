@@ -28,11 +28,14 @@ final class SymbolDetailsViewModel: ObservableObject {
     @Published private(set) var price = ""
     @Published private(set) var priceChange: PriceChange = .unchanged
     @Published private(set) var description = ""
+    @Published var error: Error?
 
     init(stockService: StockService, ticker: String) {
         self.stockService = stockService
         self.ticker = ticker
-
+    }
+    
+    func performTasks() {
         observeStock()
     }
 
@@ -40,6 +43,9 @@ final class SymbolDetailsViewModel: ObservableObject {
         stockCancellable = stockService.stock(for: ticker)
             .sink(
                 receiveCompletion: { completion in
+                    if case let .failure(error) = completion {
+                        self.error = error
+                    }
                     print("Completed stock details stream: \(completion)")
                 },
                 receiveValue: { [weak self] stock in

@@ -38,8 +38,12 @@ struct WatchlistScreen: View {
                 )
             }
         }
-//        .task {
-//            viewModel.startStreaming()
-//        }
+        .alert("Error", isPresented: .constant(viewModel.error != nil), presenting: viewModel.error) { _ in
+            Button("OK") {
+                viewModel.error = nil
+            }
+        } message: { error in
+            Text(error.localizedDescription)
+        }
     }
 }

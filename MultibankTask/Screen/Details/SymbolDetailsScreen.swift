@@ -72,5 +72,15 @@ struct SymbolDetailsScreen: View {
         .padding(24)
         .navigationTitle(viewModel.ticker)
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Error", isPresented: .constant(viewModel.error != nil), presenting: viewModel.error) { _ in
+            Button("OK") {
+                viewModel.error = nil
+            }
+        } message: { error in
+            Text(error.localizedDescription)
+        }
+        .task {
+            viewModel.performTasks()
+        }
     }
 }

@@ -11,8 +11,8 @@ import Foundation
 protocol StockService {
     var isUpdating: AnyPublisher<Bool, Never> { get }
     
-    func stocks() -> AnyPublisher<[Stock], Error>
-    func stock(for ticker: String) -> AnyPublisher<Stock, Error>
+    func stocks() -> AnyPublisher<[Stock], StockError>
+    func stock(for ticker: String) -> AnyPublisher<Stock, StockError>
     func resume()
     func pause()
 }
@@ -23,7 +23,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     private let streamer: StockStreamer
     
     private var stocksCache: [String: Stock]
-    private var stocksSubject: CurrentValueSubject<[Stock], Error>?
+    private var stocksSubject: CurrentValueSubject<[Stock], StockError>?
     private var timerCancellable: AnyCancellable?
     private var stocksCancellable: AnyCancellable?
     
@@ -39,7 +39,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         stocksCache = Dictionary(uniqueKeysWithValues: repository.stocks().map { ($0.ticker, $0) })
     }
     
-    func stocks() -> AnyPublisher<[Stock], Error> {
+    func stocks() -> AnyPublisher<[Stock], StockError> {
         if let stocksSubject {
             return stocksSubject.eraseToAnyPublisher()
         }
@@ -47,7 +47,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         isUpdatingSubject.value = true
         
         let cachedStocks = stocksCache.values.sorted { $0.price > $1.price }
-        let stocksSubject = CurrentValueSubject<[Stock], Error>(cachedStocks)
+        let stocksSubject = CurrentValueSubject<[Stock], StockError>(cachedStocks)
         self.stocksSubject = stocksSubject
         
         observeStocks()
@@ -56,7 +56,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         return stocksSubject.eraseToAnyPublisher()
     }
     
-    private func terminate(with completion: Subscribers.Completion<Error>) {
+    private func terminate(with completion: Subscribers.Completion<StockError>) {
         stocksSubject?.send(completion: completion)
         stocksSubject = nil
         
@@ -69,10 +69,14 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         isUpdatingSubject.value = false
     }
     
-    func stock(for ticker: String) -> AnyPublisher<Stock, Error> {
+    func stock(for ticker: String) -> AnyPublisher<Stock, StockError> {
         stocks()
-            .compactMap { stocks in
-                stocks.first(where: { $0.ticker == ticker })
+            .flatMap { stocks in
+                if let stock = stocks.first(where: { $0.ticker == ticker }) {
+                    Just<Stock>(stock).setFailureType(to: StockError.self).eraseToAnyPublisher()
+                } else {
+                    Fail<Stock, StockError>(error: StockError.notFound).eraseToAnyPublisher()
+                }
             }
             .eraseToAnyPublisher()
     }
@@ -104,7 +108,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         do {
             try streamer.start()
         } catch {
-            terminate(with: .failure(error))
+            terminate(with: .failure(StockError.networking(error)))
         }
     }
     

@@ -23,7 +23,7 @@ final class StockStreamer: Sendable {
                 )
             }
             .mapError { error in
-                StockError(message: error.localizedDescription)
+                StockError.networking(error)
             }
             .eraseToAnyPublisher()
     }

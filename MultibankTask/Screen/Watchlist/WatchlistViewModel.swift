@@ -35,6 +35,7 @@ final class WatchlistViewModel: ObservableObject {
     @Published private(set) var items: [WatchlistItem] = []
     @Published private(set) var isConnected = false
     @Published private(set) var isUpdating = true
+    @Published var error: Error?
     
     init(service: StockService) {
         self.service = service
@@ -75,7 +76,7 @@ final class WatchlistViewModel: ObservableObject {
             .sink(
                 receiveCompletion: { completion in
                     if case let .failure(error) = completion {
-                        print("error: \(error.localizedDescription)")
+                        self.error = error
                     }
                     self.isConnected = false
                 },
