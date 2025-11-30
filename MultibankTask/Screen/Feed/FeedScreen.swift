@@ -15,6 +15,7 @@ struct FeedScreen: View {
     var body: some View {
         List(viewModel.items) { item in
             FeedRow(item: item)
+                .contentShape(Rectangle())
                 .onTapGesture {
                     router.push(.symbolDetails(ticker: item.ticker))
                 }
@@ -36,6 +37,7 @@ struct FeedScreen: View {
                         Image(systemName: viewModel.isUpdating ? "stop.fill" : "play.fill")
                     }
                 )
+                .id(UUID())
             }
         }
         .alert("Error", isPresented: .constant(viewModel.error != nil), presenting: viewModel.error) { _ in
