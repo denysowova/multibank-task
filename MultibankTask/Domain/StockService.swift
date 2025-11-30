@@ -20,10 +20,11 @@ protocol StockService {
 final class StockServiceImpl: StockService, @unchecked Sendable {
     
     private let repository: StockRepository
-    private let streamer: StockStreamer
     
+    private var streamer: StockStreamer?
     private var stocksCache: [String: Stock]
     private var stocksSubject: CurrentValueSubject<[Stock], StockError>?
+    
     private var timerCancellable: AnyCancellable?
     private var stocksCancellable: AnyCancellable?
     
@@ -35,7 +36,6 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     
     init(repository: StockRepository) {
         self.repository = repository
-        streamer = repository.streamer()
         stocksCache = Dictionary(uniqueKeysWithValues: repository.stocks().map { ($0.ticker, $0) })
     }
     
@@ -66,6 +66,8 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
         stocksCancellable?.cancel()
         stocksCancellable = nil
         
+        streamer?.terminate()
+        
         isUpdatingSubject.value = false
     }
     
@@ -82,7 +84,9 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     }
     
     func resume() {
-        isUpdatingSubject.value = true
+        if stocksSubject != nil {
+            isUpdatingSubject.value = true
+        }
     }
     
     func pause() {
@@ -90,7 +94,9 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     }
     
     private func observeStocks() {
-        stocksCancellable = streamer.stock
+        streamer = repository.streamer()
+        
+        stocksCancellable = streamer?.stock
             .sink(
                 receiveCompletion: { completion in
                     switch completion {
@@ -106,7 +112,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
             )
         
         do {
-            try streamer.start()
+            try streamer?.start()
         } catch {
             terminate(with: .failure(StockError.networking(error)))
         }
@@ -115,6 +121,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
     private func startTimer() {
         timerCancellable = Timer.publish(every: 2, on: .main, in: .common)
             .autoconnect()
+            .prepend(.now)
             .sink { _ in
                 // 1. cache and publish stocks here! use a set instead!
                 // 2. or use flatmap to observe new stocks after updates are sent, but sequential and therefore not good
@@ -160,7 +167,7 @@ final class StockServiceImpl: StockService, @unchecked Sendable {
             Task {
                 do {
 //                    print("Updating stock: \(update.name) with new price: \(update.price)")
-                    try await self.streamer.update(update)
+                    try await self.streamer?.update(update)
                 } catch {
                     print("error sending update: \(error.localizedDescription)")
                 }

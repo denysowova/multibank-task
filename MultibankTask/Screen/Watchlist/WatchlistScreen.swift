@@ -45,5 +45,8 @@ struct WatchlistScreen: View {
         } message: { error in
             Text(error.localizedDescription)
         }
+        .task {
+            viewModel.performTasks()
+        }
     }
 }

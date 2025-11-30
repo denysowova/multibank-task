@@ -36,6 +36,10 @@ final class StockStreamer: Sendable {
         try task.start()
     }
     
+    func terminate() {
+        task.terminate()
+    }
+    
     func update(_ stock: Stock) async throws {
         let dto = StockDTO(
             ticker: stock.ticker,

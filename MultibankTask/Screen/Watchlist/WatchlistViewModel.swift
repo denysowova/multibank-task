@@ -41,6 +41,9 @@ final class WatchlistViewModel: ObservableObject {
         self.service = service
         
         observeUpdatingStatus()
+    }
+    
+    func performTasks() {
         observeStocks()
     }
     
@@ -48,7 +51,11 @@ final class WatchlistViewModel: ObservableObject {
         if isUpdating {
             service.pause()
         } else {
-            service.resume()
+            if isConnected {
+                service.resume()
+            } else {
+                observeStocks()
+            }
         }
     }
     
