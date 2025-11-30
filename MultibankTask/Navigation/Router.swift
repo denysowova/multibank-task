@@ -37,4 +37,22 @@ final class Router: ObservableObject {
     func push(_ route: Route) {
         path.append(route)
     }
+    
+    func handleDeeplink(_ url: URL) {
+        guard let host = url.host() else {
+            return
+        }
+        
+        let route: Route
+        
+        switch host {
+        case "symbol":
+            let ticker = url.lastPathComponent
+            route = .symbolDetails(ticker: ticker)
+        default:
+            return
+        }
+        
+        push(route)
+    }
 }

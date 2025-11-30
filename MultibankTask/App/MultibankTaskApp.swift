@@ -21,6 +21,9 @@ struct MultibankTaskApp: App {
                     }
             }
             .environmentObject(router)
+            .onOpenURL { url in
+                router.handleDeeplink(url)
+            }
         }
     }
 }
