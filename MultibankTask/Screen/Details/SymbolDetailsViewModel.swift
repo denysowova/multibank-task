@@ -46,6 +46,7 @@ final class SymbolDetailsViewModel: ObservableObject {
 
     private func observeStock() {
         stockCancellable = stockService.stock(for: ticker)
+            .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
                     if case let .failure(error) = completion {
