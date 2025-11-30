@@ -6,12 +6,9 @@
 //
 
 import Foundation
-import Combine
+@preconcurrency import Combine
 
-/// NOTE: @unchecked Sendable is solvable making the type an actor. That will create some difficulties with Combine usage.
-/// See the websocket-actor branch
-final class WebSocketTask<InMessage: Decodable & Sendable, OutMessage: Encodable & Sendable>:
-    NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+actor WebSocketTask<InMessage: Decodable & Sendable, OutMessage: Encodable & Sendable>: NSObject, URLSessionTaskDelegate {
 
     private let session = URLSession(configuration: .default)
     private let socket: URLSessionWebSocketTask
@@ -21,9 +18,9 @@ final class WebSocketTask<InMessage: Decodable & Sendable, OutMessage: Encodable
     private var socketTask: Task<Void, Never>?
     private var hasTerminated = false
     
-    private let _messages = PassthroughSubject<InMessage, WebSocketTaskError>()
+    private nonisolated let _messages = PassthroughSubject<InMessage, WebSocketTaskError>()
     
-    var messages: AnyPublisher<InMessage, WebSocketTaskError> {
+    nonisolated var messages: AnyPublisher<InMessage, WebSocketTaskError> {
         _messages.eraseToAnyPublisher()
     }
 
@@ -35,10 +32,6 @@ final class WebSocketTask<InMessage: Decodable & Sendable, OutMessage: Encodable
         super.init()
 
         socket.delegate = self
-    }
-
-    deinit {
-        terminateStream()
     }
 
     private func receiveMessage() async {
@@ -128,7 +121,9 @@ final class WebSocketTask<InMessage: Decodable & Sendable, OutMessage: Encodable
 
     // MARK: - URLSessionTaskDelegate
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
-        terminateStream(withError: .streamError(raw: error))
+    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+        Task {
+            await terminateStream(withError: .streamError(raw: error))
+        }
     }
 }
