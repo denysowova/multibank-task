@@ -1,5 +1,5 @@
 //
-//  WatchlistViewModel.swift
+//  FeedViewModel.swift
 //  MultibankTask
 //
 //  Created by Volodymyr Denysov on 28.11.25.
@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 
-struct WatchlistItem: Identifiable {
+struct FeedItem: Identifiable {
     let id: String
     let ticker: String
     let name: String
@@ -17,7 +17,7 @@ struct WatchlistItem: Identifiable {
 }
 
 @MainActor
-final class WatchlistViewModel: ObservableObject {
+final class FeedViewModel: ObservableObject {
     
     private let service: StockService
     
@@ -32,7 +32,7 @@ final class WatchlistViewModel: ObservableObject {
         return formatter
     }()
     
-    @Published private(set) var items: [WatchlistItem] = []
+    @Published private(set) var items: [FeedItem] = []
     @Published private(set) var isConnected = false
     @Published private(set) var isUpdating = true
     @Published var error: Error?
@@ -70,7 +70,7 @@ final class WatchlistViewModel: ObservableObject {
                 stocks.map {
                     let priceString = self.priceFormatter.string(from: $0.price as NSDecimalNumber) ?? "\($0.price)"
 
-                    return WatchlistItem(
+                    return FeedItem(
                         id: $0.ticker,
                         ticker: $0.ticker,
                         name: $0.name,

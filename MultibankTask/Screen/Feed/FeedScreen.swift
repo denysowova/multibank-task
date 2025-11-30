@@ -1,5 +1,5 @@
 //
-//  WatchlistScreen.swift
+//  FeedScreen.swift
 //  MultibankTask
 //
 //  Created by Volodymyr Denysov on 29.11.25.
@@ -7,20 +7,20 @@
 
 import SwiftUI
 
-struct WatchlistScreen: View {
+struct FeedScreen: View {
     
-    @StateObject private var viewModel = ViewModelFactory.feedViewModel()
+    @StateObject private var viewModel = ViewModelFactory.feed()
     @EnvironmentObject private var router: Router
     
     var body: some View {
         List(viewModel.items) { item in
-            WatchlistRow(item: item)
+            FeedRow(item: item)
                 .onTapGesture {
                     router.push(.symbolDetails(ticker: item.ticker))
                 }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(Text("Watchlist"))
+        .navigationTitle(Text("Feed"))
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Text(viewModel.isConnected ? "🟢 Connected" : "🔴 Disconnected")

@@ -21,11 +21,11 @@ private enum DomainFactory {
 @MainActor
 enum ViewModelFactory {
     
-    static func feedViewModel() -> WatchlistViewModel {
-        WatchlistViewModel(service: DomainFactory.stockService)
+    static func feed() -> FeedViewModel {
+        FeedViewModel(service: DomainFactory.stockService)
     }
     
-    static func symbolDetailsViewModel(withTicker ticker: String) -> SymbolDetailsViewModel {
+    static func symbolDetails(withTicker ticker: String) -> SymbolDetailsViewModel {
         SymbolDetailsViewModel(stockService: DomainFactory.stockService, ticker: ticker)
     }
 }

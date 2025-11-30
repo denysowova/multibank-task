@@ -20,7 +20,7 @@ extension Route {
     func destination() -> some View {
         switch self {
         case .feed:
-            WatchlistScreen()
+            FeedScreen()
         case .symbolDetails(let ticker):
             SymbolDetailsScreen(ticker: ticker)
         }

@@ -1,5 +1,5 @@
 //
-//  WatchlistRow.swift
+//  FeedRow.swift
 //  MultibankTask
 //
 //  Created by Volodymyr Denysov on 29.11.25.
@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-struct WatchlistRow: View {
+struct FeedRow: View {
     
-    let item: WatchlistItem
+    let item: FeedItem
 
     @State private var priceColor: Color = .primary
 
